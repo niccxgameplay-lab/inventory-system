@@ -225,7 +225,25 @@
   </div>
 </div>
 
-  <script src="script.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/12.15.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/12.15.0/firebase-firestore-compat.js"></script>
+
+<script>
+  const firebaseConfig = {
+    apiKey: "AIzaSyDLYGUgaotWSFVejjofjx0Cb6f0_-wGey0",
+    authDomain: "bell-carvalho.firebaseapp.com",
+    projectId: "bell-carvalho",
+    storageBucket: "bell-carvalho.firebasestorage.app",
+    messagingSenderId: "389086220881",
+    appId: "1:389086220881:web:80d5bd41fbe11c3a899e70",
+    measurementId: "G-G2GDSB8HD0"
+  };
+
+  firebase.initializeApp(firebaseConfig);
+  const db = firebase.firestore();
+</script>
+
+<script src="script.js"></script>
   <div id="toastSucesso" class="toast-sucesso">
   ✅ Venda registrada com sucesso!
 </div>
