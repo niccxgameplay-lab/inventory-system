@@ -1,0 +1,233 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Estoque Bell Carvalho</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+  <div id="telaLogin" class="tela-login">
+    <div class="login-card">
+      <h1>Bell Carvalho</h1>
+      <p>Login do sistema</p>
+
+      <input type="text" id="loginNome" placeholder="Nome">
+      <input type="password" id="loginSenha" placeholder="Senha">
+
+      <button onclick="fazerLogin()">Entrar</button>
+
+      <p class="login-info">Primeiro acesso: admin / 1234</p>
+    </div>
+  </div>
+
+  <div class="container" id="sistema" style="display:none;">
+    <img src="logo.png" class="logo-bell">
+    <p class="subtitulo">Controle simples de roupas</p>
+
+    <div class="usuario-topo">
+      <span id="nomeUsuarioLogado">👤 Logado como: -</span>
+      <button onclick="sairSistema()">Sair</button>
+    </div>
+
+    <div class="dashboard">
+      <div>📦 Produtos<br><strong id="dashProdutos">0</strong></div>
+      <div>👕 Peças<br><strong id="dashPecas">0</strong></div>
+      <div>⚠️ Baixo<br><strong id="dashBaixo">0</strong></div>
+      <div>💰 Estoque<br><strong id="dashValor">R$ 0,00</strong></div>
+    </div>
+
+    <div class="cadastro">
+      <input type="text" id="nomeProduto" placeholder="Nome do produto">
+      <input type="text" id="corProduto" placeholder="Cor">
+
+      <select id="categoriaProduto">
+        <option value="">Categoria</option>
+        <option value="Vestido">Vestido</option>
+        <option value="Blusa">Blusa</option>
+        <option value="Calça">Calça</option>
+        <option value="Conjunto">Conjunto</option>
+        <option value="Saia">Saia</option>
+        <option value="Short">Short</option>
+        <option value="Outro">Outro</option>
+      </select>
+
+      <input type="number" id="quantidadeProduto" placeholder="Quantidade">
+      <input type="number" id="precoProduto" placeholder="Preço R$" step="0.01">
+      <input type="file" id="imagemProduto" accept="image/*">
+      <button onclick="adicionarProduto()">Adicionar produto</button>
+    </div>
+
+    <div class="topo-lista">
+      <h2>Produtos</h2>
+      <span id="totalProdutos">0 produtos</span>
+    </div>
+
+    <input type="text" id="pesquisaProduto" placeholder="Pesquisar produto..." onkeyup="atualizarLista()">
+
+    <div class="abas">
+      <button class="aba-btn ativa" onclick="mostrarEstoque()">📦 Estoque</button>
+      <button class="aba-btn" onclick="mostrarVendas()">💰 Vendas</button>
+      <button class="aba-btn" onclick="mostrarRelatorios()">📊 Relatórios</button>
+      <button class="aba-btn" onclick="mostrarEstoqueBaixo()">⚠️ Estoque Baixo</button>
+      <button class="aba-btn" id="btnFuncionarios" onclick="mostrarFuncionarios()">👥 Funcionários</button>
+    </div>
+
+    <button class="aba-btn" id="btnBackup" onclick="exportarBackup()">
+  📦 Fazer Backup
+    </button>
+
+    <div id="abaEstoque">
+      <div id="listaProdutos" class="lista-produtos"></div>
+    </div>
+
+    <div id="abaVendas" style="display:none;">
+      <h2>Histórico de Vendas</h2>
+
+      <select id="filtroVendas" onchange="atualizarVendas()">
+        <option value="todas">Todas as vendas</option>
+        <option value="hoje">Hoje</option>
+        <option value="semana">Esta semana</option>
+        <option value="mes">Este mês</option>
+      </select>
+
+      <div id="listaVendas" class="lista-vendas"></div>
+    </div>
+
+    <div id="abaRelatorios" style="display:none;">
+      <h2>Relatórios</h2>
+
+      <div class="relatorios">
+        <div class="relatorio-card">
+          <h3>Hoje</h3>
+          <p id="relatorioHoje">R$ 0,00</p>
+        </div>
+
+        <div class="relatorio-card">
+          <h3>Este mês</h3>
+          <p id="relatorioMes">R$ 0,00</p>
+        </div>
+
+        <div class="relatorio-card">
+          <h3>Peças vendidas no mês</h3>
+          <p id="relatorioPecasMes">0 peças</p>
+        </div>
+
+        <div class="relatorio-card">
+          <h3>Mais vendido</h3>
+          <p id="relatorioMaisVendido">Nenhum</p>
+        </div>
+
+        <div class="relatorio-card">
+          <h3>Vendedor do mês</h3>
+          <p id="relatorioVendedorMes">Nenhum</p>
+        </div>
+      </div>
+
+      <h3>Vendas por mês</h3>
+      <div id="vendasPorMes"></div>
+
+      <h3>Formas de pagamento</h3>
+      <div id="formasPagamento"></div>
+    </div>
+
+    <div id="abaEstoqueBaixo" style="display:none;">
+      <h2>Produtos com estoque baixo</h2>
+      <div id="listaEstoqueBaixo" class="lista-produtos"></div>
+    </div>
+
+    <div id="abaFuncionarios" style="display:none;">
+      <h2>Funcionários</h2>
+
+      <div class="cadastro-funcionario">
+        <input type="text" id="funcNome" placeholder="Nome">
+        <input type="text" id="funcSobrenome" placeholder="Sobrenome">
+        <input type="password" id="funcSenha" placeholder="Senha">
+        <button onclick="cadastrarFuncionario()">Cadastrar funcionário</button>
+      </div>
+
+      <div id="listaFuncionarios" class="lista-vendas"></div>
+    </div>
+  </div>
+
+  <div id="modalVenda" class="modal">
+    <div class="modal-conteudo">
+      <button class="fechar-modal" onclick="fecharModalVenda()">×</button>
+
+      <h2>Venda do produto</h2>
+
+      <div id="detalhesVenda"></div>
+
+      <input type="number" id="quantidadeVenda" placeholder="Quantidade a vender" min="1">
+
+      <select id="formaPagamento">
+        <option value="">Forma de pagamento</option>
+        <option value="PIX">PIX</option>
+        <option value="Dinheiro">Dinheiro</option>
+        <option value="Cartão">Cartão</option>
+      </select>
+
+      <h3 id="totalVenda">Total: R$ 0,00</h3>
+
+<button class="btn-confirmar-venda" onclick="confirmarVenda()">
+  Confirmar venda
+</button>
+
+<button class="btn-imprimir" onclick="imprimirComprovante()">
+  🖨️ Imprimir Comprovante
+</button>
+
+
+  <div id="modalEditar" class="modal">
+    <div class="modal-conteudo">
+      <button class="fechar-modal" onclick="fecharModalEditar()">×</button>
+
+      <h2>Editar produto</h2>
+
+      <input type="text" id="editarNome" placeholder="Nome do produto">
+      <input type="text" id="editarCor" placeholder="Cor">
+
+      <select id="editarCategoria">
+        <option value="">Categoria</option>
+        <option value="Vestido">Vestido</option>
+        <option value="Blusa">Blusa</option>
+        <option value="Calça">Calça</option>
+        <option value="Conjunto">Conjunto</option>
+        <option value="Saia">Saia</option>
+        <option value="Short">Short</option>
+        <option value="Outro">Outro</option>
+      </select>
+
+      <input type="number" id="editarQuantidade" placeholder="Quantidade">
+      <input type="number" id="editarPreco" placeholder="Preço R$" step="0.01">
+      <input type="file" id="editarImagem" accept="image/*">
+
+      <button class="btn-confirmar-venda" onclick="salvarEdicaoProduto()">
+        Salvar alterações
+      </button>
+    </div>
+  </div>
+
+  <div id="modalEditarFuncionario" class="modal">
+    <div class="modal-conteudo">
+      <button class="fechar-modal" onclick="fecharModalEditarFuncionario()">×</button>
+
+      <h2>Editar funcionário</h2>
+
+      <input type="text" id="editarFuncNome" placeholder="Nome">
+      <input type="text" id="editarFuncSobrenome" placeholder="Sobrenome">
+      <input type="password" id="editarFuncSenha" placeholder="Nova senha">
+
+      <button class="btn-confirmar-venda" onclick="salvarEdicaoFuncionario()">
+        Salvar funcionário
+      </button>
+    </div>
+  </div>
+
+  <script src="script.js"></script>
+  <div id="toastSucesso" class="toast-sucesso">
+  ✅ Venda registrada com sucesso!
+</div>
+</body>
+</html>
