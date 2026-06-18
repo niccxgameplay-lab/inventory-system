@@ -2,63 +2,87 @@ let ultimaVenda = null;
 let produtos = [];
 let vendas = [];
 let funcionarios = [];
-
-const dadosRef = db.collection("sistema").doc("dados");
-
-dadosRef.onSnapshot((doc) => {
-  if (doc.exists) {
-    const dados = doc.data();
-
-    produtos = dados.produtos || [];
-    vendas = dados.vendas || [];
-    funcionarios = dados.funcionarios || [];
-  } else {
-    produtos = JSON.parse(localStorage.getItem("produtos")) || [];
-    vendas = JSON.parse(localStorage.getItem("vendas")) || [];
-    funcionarios = JSON.parse(localStorage.getItem("funcionarios")) || [];
-
-    if (funcionarios.length === 0) {
-      funcionarios.push({
-        nome: "admin",
-        sobrenome: "Sistema",
-        senha: "1234",
-        tipo: "admin"
-      });
-    }
-
-    salvarTudo();
-  }
-
-  garantirIdsProdutos();
-  verificarLogin();
-  atualizarLista();
-});
 let usuarioLogado = JSON.parse(localStorage.getItem("usuarioLogado")) || null;
 
 let produtoSelecionado = null;
 let produtoEditando = null;
 let funcionarioEditando = null;
+let dadosCarregados = false;
 
-if (funcionarios.length === 0) {
-  funcionarios.push({
-    nome: "admin",
-    sobrenome: "Sistema",
-    senha: "1234",
-    tipo: "admin"
+const dadosRef = db.collection("sistema").doc("dados");
+
+// Carrega e sincroniza tudo em tempo real pelo Firebase
+if (!window.__bellFirebaseListenerCriado) {
+  window.__bellFirebaseListenerCriado = true;
+
+  dadosRef.onSnapshot((doc) => {
+    if (doc.exists) {
+      const dados = doc.data() || {};
+      produtos = dados.produtos || [];
+      vendas = dados.vendas || [];
+      funcionarios = dados.funcionarios || [];
+
+      if (funcionarios.length === 0) {
+        funcionarios.push({
+          nome: "admin",
+          sobrenome: "Sistema",
+          senha: "1234",
+          tipo: "admin"
+        });
+        salvarTudo();
+      }
+    } else {
+      produtos = [];
+      vendas = [];
+      funcionarios = [{
+        nome: "admin",
+        sobrenome: "Sistema",
+        senha: "1234",
+        tipo: "admin"
+      }];
+      salvarTudo();
+    }
+
+    dadosCarregados = true;
+    garantirIdsProdutos(false);
+    verificarLogin();
+    atualizarLista();
+
+    const abaFuncionarios = document.getElementById("abaFuncionarios");
+    if (abaFuncionarios && abaFuncionarios.style.display !== "none") {
+      carregarFuncionarios();
+    }
+  }, (erro) => {
+    console.error("Erro ao carregar Firebase:", erro);
+    alert("Erro ao carregar dados do Firebase. Veja o console.");
   });
-
-  localStorage.setItem("funcionarios", JSON.stringify(funcionarios));
 }
-
-garantirIdsProdutos();
-verificarLogin();
-atualizarLista();
 
 function gerarId() {
   return Date.now().toString() + Math.random().toString(16).slice(2);
 }
 
-function garantirIdsProdutos() {
+function salvarTudo() {
+  return dadosRef.set({
+    produtos,
+    vendas,
+    funcionarios
+  });
+}
+
+function salvarProdutos() {
+  return salvarTudo();
+}
+
+function salvarVendas() {
+  return salvarTudo();
+}
+
+function salvarFuncionarios() {
+  return salvarTudo();
+}
+
+function garantirIdsProdutos(salvar = true) {
   let mudou = false;
 
   produtos.forEach(produto => {
@@ -68,7 +92,7 @@ function garantirIdsProdutos() {
     }
   });
 
-  if (mudou) {
+  if (mudou && salvar) {
     salvarProdutos();
   }
 }
@@ -77,7 +101,19 @@ function verificarLogin() {
   const telaLogin = document.getElementById("telaLogin");
   const sistema = document.getElementById("sistema");
 
+  if (!telaLogin || !sistema) return;
+
   if (usuarioLogado) {
+    const usuarioAtualizado = funcionarios.find(func =>
+      func.nome.toLowerCase() === usuarioLogado.nome.toLowerCase() &&
+      func.senha === usuarioLogado.senha
+    );
+
+    if (usuarioAtualizado) {
+      usuarioLogado = usuarioAtualizado;
+      localStorage.setItem("usuarioLogado", JSON.stringify(usuarioLogado));
+    }
+
     telaLogin.style.display = "none";
     sistema.style.display = "block";
 
@@ -86,7 +122,8 @@ function verificarLogin() {
 
     const btnFuncionarios = document.getElementById("btnFuncionarios");
     const btnBackup = document.getElementById("btnBackup");
-    const cardValor = document.getElementById("dashValor").parentElement;
+    const dashValor = document.getElementById("dashValor");
+    const cardValor = dashValor ? dashValor.parentElement : null;
 
     if (usuarioLogado.tipo !== "admin") {
       if (btnFuncionarios) btnFuncionarios.style.display = "none";
@@ -97,7 +134,6 @@ function verificarLogin() {
       if (btnBackup) btnBackup.style.display = "inline-block";
       if (cardValor) cardValor.style.display = "";
     }
-
   } else {
     telaLogin.style.display = "flex";
     sistema.style.display = "none";
@@ -105,6 +141,11 @@ function verificarLogin() {
 }
 
 function fazerLogin() {
+  if (!dadosCarregados) {
+    alert("Aguarde carregar os dados...");
+    return;
+  }
+
   const nome = document.getElementById("loginNome").value.trim();
   const senha = document.getElementById("loginSenha").value.trim();
 
@@ -120,14 +161,13 @@ function fazerLogin() {
 
   usuarioLogado = usuario;
   localStorage.setItem("usuarioLogado", JSON.stringify(usuarioLogado));
-
   verificarLogin();
 }
 
 function sairSistema() {
   localStorage.removeItem("usuarioLogado");
   usuarioLogado = null;
-  location.reload();
+  verificarLogin();
 }
 
 function adicionarProduto() {
@@ -145,11 +185,9 @@ function adicionarProduto() {
 
   if (imagemArquivo) {
     const leitor = new FileReader();
-
     leitor.onload = function (evento) {
       salvarNovoProduto(nome, cor, categoria, Number(quantidade), Number(preco), evento.target.result);
     };
-
     leitor.readAsDataURL(imagemArquivo);
   } else {
     salvarNovoProduto(nome, cor, categoria, Number(quantidade), Number(preco), "");
@@ -170,13 +208,17 @@ function salvarNovoProduto(nome, cor, categoria, quantidade, preco, imagem) {
   salvarProdutos();
   atualizarLista();
   limparCampos();
+  mostrarToastSucesso("✅ Produto cadastrado com sucesso!");
 }
 
 function atualizarLista() {
   const lista = document.getElementById("listaProdutos");
   const total = document.getElementById("totalProdutos");
-  const pesquisa = document.getElementById("pesquisaProduto").value.toLowerCase().trim();
+  const campoPesquisa = document.getElementById("pesquisaProduto");
 
+  if (!lista || !total || !campoPesquisa) return;
+
+  const pesquisa = campoPesquisa.value.toLowerCase().trim();
   lista.innerHTML = "";
   let quantidadeExibida = 0;
 
@@ -195,7 +237,7 @@ function atualizarLista() {
     const card = document.createElement("div");
     card.className = "card-produto";
 
-    if (produto.quantidade <= 2) {
+    if (Number(produto.quantidade || 0) <= 2) {
       card.classList.add("estoque-baixo");
     }
 
@@ -213,7 +255,7 @@ function atualizarLista() {
         <p><strong>Quantidade:</strong> ${produto.quantidade}</p>
         <p><strong>Preço:</strong> R$ ${Number(produto.preco || 0).toFixed(2)}</p>
 
-        ${produto.quantidade <= 2 ? `<p class="alerta">⚠ Estoque baixo</p>` : ""}
+        ${Number(produto.quantidade || 0) <= 2 ? `<p class="alerta">⚠ Estoque baixo</p>` : ""}
 
         <div class="ajustador-estoque">
           <button onclick="diminuirEstoque(${index})">-</button>
@@ -233,25 +275,24 @@ function atualizarLista() {
   });
 
   total.innerText = quantidadeExibida + " produtos";
-
   atualizarDashboard();
   atualizarVendas();
   atualizarEstoqueBaixo();
 }
 
 function aumentarEstoque(index) {
-  produtos[index].quantidade++;
+  produtos[index].quantidade = Number(produtos[index].quantidade || 0) + 1;
   salvarProdutos();
   atualizarLista();
 }
 
 function diminuirEstoque(index) {
-  if (produtos[index].quantidade <= 0) {
+  if (Number(produtos[index].quantidade || 0) <= 0) {
     alert("A quantidade já está em 0!");
     return;
   }
 
-  produtos[index].quantidade--;
+  produtos[index].quantidade = Number(produtos[index].quantidade || 0) - 1;
   salvarProdutos();
   atualizarLista();
 }
@@ -265,7 +306,7 @@ function abrirModalVenda(index) {
     return;
   }
 
-  if (produto.quantidade <= 0) {
+  if (Number(produto.quantidade || 0) <= 0) {
     alert("Esse produto está sem estoque!");
     return;
   }
@@ -296,15 +337,18 @@ function fecharModalVenda() {
   produtoSelecionado = null;
 }
 
-document.getElementById("quantidadeVenda").addEventListener("input", function () {
-  if (produtoSelecionado === null) return;
+const inputQuantidadeVenda = document.getElementById("quantidadeVenda");
+if (inputQuantidadeVenda) {
+  inputQuantidadeVenda.addEventListener("input", function () {
+    if (produtoSelecionado === null) return;
 
-  const produto = produtos[produtoSelecionado];
-  const quantidade = Number(this.value);
-  const total = quantidade * Number(produto.preco || 0);
+    const produto = produtos[produtoSelecionado];
+    const quantidade = Number(this.value);
+    const total = quantidade * Number(produto.preco || 0);
 
-  document.getElementById("totalVenda").innerText = `Total: R$ ${total.toFixed(2)}`;
-});
+    document.getElementById("totalVenda").innerText = `Total: R$ ${total.toFixed(2)}`;
+  });
+}
 
 function confirmarVenda() {
   if (produtoSelecionado === null) return;
@@ -328,14 +372,14 @@ function confirmarVenda() {
     return;
   }
 
-  if (quantidadeVendida > produto.quantidade) {
+  if (quantidadeVendida > Number(produto.quantidade || 0)) {
     alert("Você não pode vender mais do que tem no estoque!");
     return;
   }
 
-  produto.quantidade -= quantidadeVendida;
+  produto.quantidade = Number(produto.quantidade || 0) - quantidadeVendida;
 
-  vendas.push({
+  const novaVenda = {
     id: gerarId(),
     produtoId: produto.id,
     nome: produto.nome,
@@ -347,25 +391,26 @@ function confirmarVenda() {
     quantidade: quantidadeVendida,
     total: quantidadeVendida * Number(produto.preco || 0),
     data: new Date().toISOString()
-  });
+  };
+
+  vendas.push(novaVenda);
+
   ultimaVenda = {
-  produto: produto.nome,
-  cor: produto.cor,
-  categoria: produto.categoria || "-",
-  quantidade: quantidadeVendida,
-  preco: Number(produto.preco || 0),
-  total: quantidadeVendida * Number(produto.preco || 0),
-  vendedor: `${usuarioLogado.nome} ${usuarioLogado.sobrenome}`,
-  pagamento: formaPagamento,
-  data: new Date().toLocaleString("pt-BR")
-};
+    produto: produto.nome,
+    cor: produto.cor,
+    categoria: produto.categoria || "-",
+    quantidade: quantidadeVendida,
+    preco: Number(produto.preco || 0),
+    total: quantidadeVendida * Number(produto.preco || 0),
+    vendedor: `${usuarioLogado.nome} ${usuarioLogado.sobrenome}`,
+    pagamento: formaPagamento,
+    data: new Date().toLocaleString("pt-BR")
+  };
 
-  salvarProdutos();
-    salvarVendas();
-    atualizarLista();
-    fecharModalVenda();
-
-    mostrarToastSucesso();
+  salvarTudo();
+  atualizarLista();
+  fecharModalVenda();
+  mostrarToastSucesso("✅ Venda registrada com sucesso!");
 }
 
 function excluirVenda(index) {
@@ -374,17 +419,13 @@ function excluirVenda(index) {
     return;
   }
 
-  if (!confirm("Deseja excluir esta venda?")) {
-    return;
-  }
+  if (!confirm("Deseja excluir esta venda?")) return;
 
   vendas.splice(index, 1);
-
   salvarVendas();
   atualizarVendas();
   atualizarRelatorios();
-
-  alert("Venda excluída!");
+  mostrarToastSucesso("✅ Venda excluída!");
 }
 
 function excluirProduto(index) {
@@ -393,27 +434,9 @@ function excluirProduto(index) {
   produtos.splice(index, 1);
   salvarProdutos();
   atualizarLista();
+  mostrarToastSucesso("✅ Produto excluído!");
 }
 
-function salvarTudo() {
-  dadosRef.set({
-    produtos,
-    vendas,
-    funcionarios
-  });
-}
-
-function salvarProdutos() {
-  salvarTudo();
-}
-
-function salvarVendas() {
-  salvarTudo();
-}
-
-function salvarFuncionarios() {
-  salvarTudo();
-}
 function limparCampos() {
   document.getElementById("nomeProduto").value = "";
   document.getElementById("corProduto").value = "";
@@ -426,12 +449,8 @@ function limparCampos() {
 function atualizarDashboard() {
   const totalProdutos = produtos.length;
 
-  const totalPecas = produtos.reduce((soma, produto) => {
-    return soma + Number(produto.quantidade || 0);
-  }, 0);
-
-  const estoqueBaixo = produtos.filter(produto => produto.quantidade <= 2).length;
-
+  const totalPecas = produtos.reduce((soma, produto) => soma + Number(produto.quantidade || 0), 0);
+  const estoqueBaixo = produtos.filter(produto => Number(produto.quantidade || 0) <= 2).length;
   const valorEstoque = produtos.reduce((soma, produto) => {
     return soma + Number(produto.quantidade || 0) * Number(produto.preco || 0);
   }, 0);
@@ -454,8 +473,7 @@ function vendaPassaFiltro(venda) {
   }
 
   if (filtro === "mes") {
-    return dataVenda.getMonth() === agora.getMonth() &&
-      dataVenda.getFullYear() === agora.getFullYear();
+    return dataVenda.getMonth() === agora.getMonth() && dataVenda.getFullYear() === agora.getFullYear();
   }
 
   if (filtro === "semana") {
@@ -468,6 +486,7 @@ function vendaPassaFiltro(venda) {
 
 function atualizarVendas() {
   const listaVendas = document.getElementById("listaVendas");
+  if (!listaVendas) return;
 
   listaVendas.innerHTML = "";
 
@@ -560,13 +579,9 @@ function esconderAbas() {
 
 function atualizarBotoesAbas(indiceAtivo) {
   const botoes = document.querySelectorAll(".aba-btn");
-
   botoes.forEach((botao, index) => {
-    if (index === indiceAtivo) {
-      botao.classList.add("ativa");
-    } else {
-      botao.classList.remove("ativa");
-    }
+    if (index === indiceAtivo) botao.classList.add("ativa");
+    else botao.classList.remove("ativa");
   });
 }
 
@@ -594,26 +609,16 @@ function atualizarRelatorios() {
     if (dataVenda.getMonth() === mesAtual && dataVenda.getFullYear() === anoAtual) {
       totalMes += Number(venda.total || 0);
       pecasMes += Number(venda.quantidade || 0);
-
-      vendasPorVendedor[venda.vendedor] =
-        (vendasPorVendedor[venda.vendedor] || 0) + Number(venda.quantidade || 0);
+      vendasPorVendedor[venda.vendedor] = (vendasPorVendedor[venda.vendedor] || 0) + Number(venda.quantidade || 0);
     }
 
-    vendasPorProduto[venda.nome] =
-      (vendasPorProduto[venda.nome] || 0) + Number(venda.quantidade || 0);
+    vendasPorProduto[venda.nome] = (vendasPorProduto[venda.nome] || 0) + Number(venda.quantidade || 0);
 
-    const nomeMes = dataVenda.toLocaleDateString("pt-BR", {
-      month: "long",
-      year: "numeric"
-    });
-
-    vendasPorMes[nomeMes] =
-      (vendasPorMes[nomeMes] || 0) + Number(venda.total || 0);
+    const nomeMes = dataVenda.toLocaleDateString("pt-BR", { month: "long", year: "numeric" });
+    vendasPorMes[nomeMes] = (vendasPorMes[nomeMes] || 0) + Number(venda.total || 0);
 
     const forma = venda.formaPagamento || "Não informado";
-
-    vendasPorPagamento[forma] =
-      (vendasPorPagamento[forma] || 0) + Number(venda.total || 0);
+    vendasPorPagamento[forma] = (vendasPorPagamento[forma] || 0) + Number(venda.total || 0);
   });
 
   document.getElementById("relatorioHoje").innerText = `R$ ${totalHoje.toFixed(2)}`;
@@ -622,31 +627,26 @@ function atualizarRelatorios() {
 
   let maisVendido = "Nenhum";
   let maiorQuantidade = 0;
-
   for (let produto in vendasPorProduto) {
     if (vendasPorProduto[produto] > maiorQuantidade) {
       maiorQuantidade = vendasPorProduto[produto];
       maisVendido = `${produto} (${maiorQuantidade} peças)`;
     }
   }
-
   document.getElementById("relatorioMaisVendido").innerText = maisVendido;
 
   let vendedorMes = "Nenhum";
   let maiorVendaVendedor = 0;
-
   for (let vendedor in vendasPorVendedor) {
     if (vendasPorVendedor[vendedor] > maiorVendaVendedor) {
       maiorVendaVendedor = vendasPorVendedor[vendedor];
       vendedorMes = `${vendedor} (${maiorVendaVendedor} peças)`;
     }
   }
-
   document.getElementById("relatorioVendedorMes").innerText = vendedorMes;
 
   const divMeses = document.getElementById("vendasPorMes");
   divMeses.innerHTML = "";
-
   for (let mes in vendasPorMes) {
     divMeses.innerHTML += `
       <div class="mes-card">
@@ -655,14 +655,12 @@ function atualizarRelatorios() {
       </div>
     `;
   }
-
   if (Object.keys(vendasPorMes).length === 0) {
     divMeses.innerHTML = "<p>Nenhuma venda registrada ainda.</p>";
   }
 
   const divPagamento = document.getElementById("formasPagamento");
   divPagamento.innerHTML = "";
-
   for (let forma in vendasPorPagamento) {
     divPagamento.innerHTML += `
       <div class="mes-card">
@@ -671,7 +669,6 @@ function atualizarRelatorios() {
       </div>
     `;
   }
-
   if (Object.keys(vendasPorPagamento).length === 0) {
     divPagamento.innerHTML = "<p>Nenhuma forma de pagamento registrada ainda.</p>";
   }
@@ -679,9 +676,9 @@ function atualizarRelatorios() {
 
 function atualizarEstoqueBaixo() {
   const lista = document.getElementById("listaEstoqueBaixo");
+  if (!lista) return;
 
   lista.innerHTML = "";
-
   const produtosBaixos = produtos.filter(produto => Number(produto.quantidade || 0) <= 2);
 
   if (produtosBaixos.length === 0) {
@@ -733,10 +730,12 @@ function fecharModalEditar() {
 }
 
 function salvarEdicaoProduto() {
-  if (produtoEditando === null) return;
+  if (produtoEditando === null) {
+    alert("Nenhum produto selecionado.");
+    return;
+  }
 
   const produto = produtos[produtoEditando];
-
   produto.nome = document.getElementById("editarNome").value.trim();
   produto.cor = document.getElementById("editarCor").value.trim();
   produto.categoria = document.getElementById("editarCategoria").value;
@@ -747,15 +746,13 @@ function salvarEdicaoProduto() {
 
   if (novaImagem) {
     const leitor = new FileReader();
-
     leitor.onload = function (evento) {
       produto.imagem = evento.target.result;
-
       salvarProdutos();
       atualizarLista();
       fecharModalEditar();
+      mostrarToastSucesso("✅ Produto atualizado!");
     };
-
     leitor.readAsDataURL(novaImagem);
     return;
   }
@@ -763,6 +760,7 @@ function salvarEdicaoProduto() {
   salvarProdutos();
   atualizarLista();
   fecharModalEditar();
+  mostrarToastSucesso("✅ Produto atualizado!");
 }
 
 function cadastrarFuncionario() {
@@ -780,6 +778,12 @@ function cadastrarFuncionario() {
     return;
   }
 
+  const existe = funcionarios.some(func => func.nome.toLowerCase() === nome.toLowerCase());
+  if (existe) {
+    alert("Já existe um funcionário com esse nome.");
+    return;
+  }
+
   funcionarios.push({
     nome,
     sobrenome,
@@ -794,12 +798,12 @@ function cadastrarFuncionario() {
   document.getElementById("funcSenha").value = "";
 
   carregarFuncionarios();
-
-  alert("Funcionário cadastrado!");
+  mostrarToastSucesso("✅ Funcionário cadastrado!");
 }
 
 function carregarFuncionarios() {
   const lista = document.getElementById("listaFuncionarios");
+  if (!lista) return;
 
   lista.innerHTML = "";
 
@@ -825,17 +829,12 @@ function carregarFuncionarios() {
 }
 
 function abrirEditarFuncionario(index) {
-    
-    document.getElementById("modalVenda").style.display = "none";
-    produtoSelecionado = null;
-
   funcionarioEditando = index;
   const func = funcionarios[index];
 
   document.getElementById("editarFuncNome").value = func.nome;
   document.getElementById("editarFuncSobrenome").value = func.sobrenome;
   document.getElementById("editarFuncSenha").value = func.senha;
-
   document.getElementById("modalEditarFuncionario").style.display = "flex";
 }
 
@@ -845,27 +844,26 @@ function fecharModalEditarFuncionario() {
 }
 
 function salvarEdicaoFuncionario() {
-  if (funcionarioEditando === null) return;
+  if (funcionarioEditando === null) {
+    alert("Nenhum funcionário selecionado.");
+    return;
+  }
 
-  funcionarios[funcionarioEditando].nome =
-    document.getElementById("editarFuncNome").value.trim();
-
-  funcionarios[funcionarioEditando].sobrenome =
-    document.getElementById("editarFuncSobrenome").value.trim();
-
-  funcionarios[funcionarioEditando].senha =
-    document.getElementById("editarFuncSenha").value.trim();
+  funcionarios[funcionarioEditando].nome = document.getElementById("editarFuncNome").value.trim();
+  funcionarios[funcionarioEditando].sobrenome = document.getElementById("editarFuncSobrenome").value.trim();
+  funcionarios[funcionarioEditando].senha = document.getElementById("editarFuncSenha").value.trim();
 
   salvarFuncionarios();
 
-  usuarioLogado = funcionarios[funcionarioEditando];
-  localStorage.setItem("usuarioLogado", JSON.stringify(usuarioLogado));
-  verificarLogin();
+  if (usuarioLogado && usuarioLogado.nome === funcionarios[funcionarioEditando].nome) {
+    usuarioLogado = funcionarios[funcionarioEditando];
+    localStorage.setItem("usuarioLogado", JSON.stringify(usuarioLogado));
+    verificarLogin();
+  }
 
   fecharModalEditarFuncionario();
   carregarFuncionarios();
-
-  alert("Funcionário atualizado!");
+  mostrarToastSucesso("✅ Funcionário atualizado!");
 }
 
 function excluirFuncionario(index) {
@@ -879,6 +877,7 @@ function excluirFuncionario(index) {
   funcionarios.splice(index, 1);
   salvarFuncionarios();
   carregarFuncionarios();
+  mostrarToastSucesso("✅ Funcionário excluído!");
 }
 
 function exportarBackup() {
@@ -887,145 +886,14 @@ function exportarBackup() {
     return;
   }
 
-  const dados = {
-    produtos,
-    vendas,
-    funcionarios
-  };
-
-  const arquivo = new Blob(
-    [JSON.stringify(dados, null, 2)],
-    { type: "application/json" }
-  );
-
+  const dados = { produtos, vendas, funcionarios };
+  const arquivo = new Blob([JSON.stringify(dados, null, 2)], { type: "application/json" });
   const link = document.createElement("a");
   link.href = URL.createObjectURL(arquivo);
   link.download = "backup-bell-carvalho.json";
   link.click();
 }
 
-document.getElementById("pesquisaProduto").addEventListener("keyup", function () {
-  atualizarLista();
-});
-function mostrarComprovante(
-  produto,
-  quantidade,
-  preco,
-  total,
-  vendedor
-){
-
-  const data = new Date().toLocaleString("pt-BR");
-
-  const comprovante = `
-=========================
- BELL CARVALHO
-=========================
-
-Produto: ${produto}
-
-Quantidade: ${quantidade}
-
-Valor Unitário:
-R$ ${preco.toFixed(2)}
-
-Total:
-R$ ${total.toFixed(2)}
-
-Vendedor:
-${vendedor}
-
-Data:
-${data}
-
-=========================
-Obrigado pela compra!
-=========================
-`;
-
-  alert(comprovante);
-}
-function imprimirComprovante(){
-
-  if(!ultimaVenda){
-    alert("Nenhuma venda registrada.");
-    return;
-  }
-
-  const janela = window.open("", "_blank");
-
-  janela.document.write(`
-    <html>
-    <head>
-      <title>Comprovante</title>
-
-      <style>
-        body{
-          font-family:Arial;
-          padding:20px;
-          text-align:center;
-        }
-
-        h2{
-          margin-bottom:20px;
-        }
-
-        .linha{
-          margin:10px 0;
-        }
-
-        hr{
-          margin:15px 0;
-        }
-      </style>
-    </head>
-
-    <body>
-
-      <h2>BELL CARVALHO</h2>
-
-      <hr>
-
-      <div class="linha">
-        Produto: ${ultimaVenda.produto}
-      </div>
-
-      <div class="linha">
-        Quantidade: ${ultimaVenda.quantidade}
-      </div>
-
-      <div class="linha">
-        Valor Unitário: R$ ${ultimaVenda.preco.toFixed(2)}
-      </div>
-
-      <div class="linha">
-        Total: R$ ${ultimaVenda.total.toFixed(2)}
-      </div>
-
-      <div class="linha">
-        Forma de Pagamento: ${ultimaVenda.pagamento}
-      </div>
-
-      <div class="linha">
-        Vendedor: ${ultimaVenda.vendedor}
-      </div>
-
-      <div class="linha">
-        Data: ${ultimaVenda.data}
-      </div>
-
-      <hr>
-
-      <h3>Obrigado pela preferência ❤️</h3>
-
-    </body>
-    </html>
-  `);
-
-  janela.document.close();
-
-  janela.print();
-}
 function imprimirComprovante() {
   if (!ultimaVenda) {
     alert("Nenhuma venda registrada ainda.");
@@ -1039,172 +907,53 @@ function imprimirComprovante() {
       <head>
         <title>Comprovante Bell Carvalho</title>
         <style>
-          body {
-            font-family: Arial, sans-serif;
-            padding: 30px;
-            background: #f4f4f4;
-          }
-
-          .comprovante {
-            max-width: 420px;
-            margin: auto;
-            background: white;
-            padding: 25px;
-            border-radius: 18px;
-            text-align: center;
-            border: 2px solid #ff7a21;
-          }
-
-          .logo-comprovante {
-            width: 90px;
-            height: 90px;
-            border-radius: 50%;
-            object-fit: cover;
-            margin-bottom: 10px;
-          }
-
-          h2 {
-            margin: 5px 0;
-          }
-
-          .linha {
-            display: flex;
-            justify-content: space-between;
-            border-bottom: 1px dashed #ccc;
-            padding: 10px 0;
-            text-align: left;
-          }
-
-          .total {
-            margin-top: 20px;
-            padding: 15px;
-            background: #111;
-            color: white;
-            font-size: 22px;
-            font-weight: bold;
-            border-radius: 12px;
-          }
-
-          .rodape {
-            margin-top: 20px;
-            font-style: italic;
-            color: #555;
-          }
-
-          @media print {
-            body {
-              background: white;
-            }
-          }
+          body { font-family: Arial, sans-serif; padding: 30px; background: #f4f4f4; }
+          .comprovante { max-width: 420px; margin: auto; background: white; padding: 25px; border-radius: 18px; text-align: center; border: 2px solid #ff7a21; }
+          .logo-comprovante { width: 90px; height: 90px; border-radius: 50%; object-fit: cover; margin-bottom: 10px; }
+          h2 { margin: 5px 0; }
+          .linha { display: flex; justify-content: space-between; border-bottom: 1px dashed #ccc; padding: 10px 0; text-align: left; }
+          .total { margin-top: 20px; padding: 15px; background: #111; color: white; font-size: 22px; font-weight: bold; border-radius: 12px; }
+          .rodape { margin-top: 20px; font-style: italic; color: #555; }
+          @media print { body { background: white; } }
         </style>
       </head>
       <body>
         <div class="comprovante">
           <img src="logo.png" class="logo-comprovante">
-
           <h2>Bell Carvalho</h2>
           <p>Comprovante de Venda</p>
-
-          <div class="linha">
-            <strong>Produto:</strong>
-            <span>${ultimaVenda.produto}</span>
-          </div>
-
-          <div class="linha">
-            <strong>Cor:</strong>
-            <span>${ultimaVenda.cor}</span>
-          </div>
-
-          <div class="linha">
-            <strong>Categoria:</strong>
-            <span>${ultimaVenda.categoria}</span>
-          </div>
-
-          <div class="linha">
-            <strong>Quantidade:</strong>
-            <span>${ultimaVenda.quantidade}</span>
-          </div>
-
-          <div class="linha">
-            <strong>Valor unitário:</strong>
-            <span>R$ ${ultimaVenda.preco.toFixed(2)}</span>
-          </div>
-
-          <div class="linha">
-            <strong>Pagamento:</strong>
-            <span>${ultimaVenda.pagamento}</span>
-          </div>
-
-          <div class="linha">
-            <strong>Vendedor:</strong>
-            <span>${ultimaVenda.vendedor}</span>
-          </div>
-
-          <div class="linha">
-            <strong>Data:</strong>
-            <span>${ultimaVenda.data}</span>
-          </div>
-
-          <div class="total">
-            Total: R$ ${ultimaVenda.total.toFixed(2)}
-          </div>
-
+          <div class="linha"><strong>Produto:</strong><span>${ultimaVenda.produto}</span></div>
+          <div class="linha"><strong>Cor:</strong><span>${ultimaVenda.cor}</span></div>
+          <div class="linha"><strong>Categoria:</strong><span>${ultimaVenda.categoria}</span></div>
+          <div class="linha"><strong>Quantidade:</strong><span>${ultimaVenda.quantidade}</span></div>
+          <div class="linha"><strong>Valor unitário:</strong><span>R$ ${ultimaVenda.preco.toFixed(2)}</span></div>
+          <div class="linha"><strong>Pagamento:</strong><span>${ultimaVenda.pagamento}</span></div>
+          <div class="linha"><strong>Vendedor:</strong><span>${ultimaVenda.vendedor}</span></div>
+          <div class="linha"><strong>Data:</strong><span>${ultimaVenda.data}</span></div>
+          <div class="total">Total: R$ ${ultimaVenda.total.toFixed(2)}</div>
           <p class="rodape">Obrigada pela preferência 🧡</p>
         </div>
-
-        <script>
-          window.onload = function() {
-            window.print();
-          }
-        <\/script>
+        <script>window.onload = function() { window.print(); }<\/script>
       </body>
     </html>
   `);
 
   janela.document.close();
 }
-function mostrarToastSucesso() {
-  const toast = document.getElementById("toastSucesso");
 
+function mostrarToastSucesso(mensagem = "✅ Venda registrada com sucesso!") {
+  const toast = document.getElementById("toastSucesso");
+  if (!toast) return;
+
+  toast.innerText = mensagem;
   toast.classList.add("mostrar");
 
   setTimeout(() => {
     toast.classList.remove("mostrar");
   }, 3000);
 }
-function salvarEdicaoProduto() {
-  if (produtoEditando === null) {
-    alert("Nenhum produto selecionado.");
-    return;
-  }
 
-  const produto = produtos[produtoEditando];
-
-  produto.nome = document.getElementById("editarNome").value.trim();
-  produto.cor = document.getElementById("editarCor").value.trim();
-  produto.categoria = document.getElementById("editarCategoria").value;
-  produto.quantidade = Number(document.getElementById("editarQuantidade").value);
-  produto.preco = Number(document.getElementById("editarPreco").value);
-
-  const novaImagem = document.getElementById("editarImagem").files[0];
-
-  if (novaImagem) {
-    const leitor = new FileReader();
-
-    leitor.onload = function (evento) {
-      produto.imagem = evento.target.result;
-      salvarProdutos();
-      atualizarLista();
-      fecharModalEditar();
-      mostrarToastSucesso();
-    };
-
-    leitor.readAsDataURL(novaImagem);
-    return;
-  }
-
-  salvarProdutos();
-  atualizarLista();
-  fecharModalEditar();
-  mostrarToastSucesso();
+const pesquisaProduto = document.getElementById("pesquisaProduto");
+if (pesquisaProduto) {
+  pesquisaProduto.addEventListener("keyup", atualizarLista);
 }
