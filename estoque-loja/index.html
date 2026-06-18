@@ -150,79 +150,80 @@
     </div>
   </div>
 
-  <div id="modalVenda" class="modal">
-    <div class="modal-conteudo">
-      <button class="fechar-modal" onclick="fecharModalVenda()">×</button>
+   <div id="modalVenda" class="modal">
+  <div class="modal-conteudo">
+    <button class="fechar-modal" onclick="fecharModalVenda()">×</button>
 
-      <h2>Venda do produto</h2>
+    <h2>Venda do produto</h2>
 
-      <div id="detalhesVenda"></div>
+    <div id="detalhesVenda"></div>
 
-      <input type="number" id="quantidadeVenda" placeholder="Quantidade a vender" min="1">
+    <input type="number" id="quantidadeVenda" placeholder="Quantidade a vender" min="1">
 
-      <select id="formaPagamento">
-        <option value="">Forma de pagamento</option>
-        <option value="PIX">PIX</option>
-        <option value="Dinheiro">Dinheiro</option>
-        <option value="Cartão">Cartão</option>
-      </select>
+    <select id="formaPagamento">
+      <option value="">Forma de pagamento</option>
+      <option value="PIX">PIX</option>
+      <option value="Dinheiro">Dinheiro</option>
+      <option value="Cartão">Cartão</option>
+    </select>
 
-      <h3 id="totalVenda">Total: R$ 0,00</h3>
+    <h3 id="totalVenda">Total: R$ 0,00</h3>
 
-<button class="btn-confirmar-venda" onclick="confirmarVenda()">
-  Confirmar venda
-</button>
+    <button class="btn-confirmar-venda" onclick="confirmarVenda()">
+      Confirmar venda
+    </button>
 
-<button class="btn-imprimir" onclick="imprimirComprovante()">
-  🖨️ Imprimir Comprovante
-</button>
-
-
-  <div id="modalEditar" class="modal">
-    <div class="modal-conteudo">
-      <button class="fechar-modal" onclick="fecharModalEditar()">×</button>
-
-      <h2>Editar produto</h2>
-
-      <input type="text" id="editarNome" placeholder="Nome do produto">
-      <input type="text" id="editarCor" placeholder="Cor">
-
-      <select id="editarCategoria">
-        <option value="">Categoria</option>
-        <option value="Vestido">Vestido</option>
-        <option value="Blusa">Blusa</option>
-        <option value="Calça">Calça</option>
-        <option value="Conjunto">Conjunto</option>
-        <option value="Saia">Saia</option>
-        <option value="Short">Short</option>
-        <option value="Outro">Outro</option>
-      </select>
-
-      <input type="number" id="editarQuantidade" placeholder="Quantidade">
-      <input type="number" id="editarPreco" placeholder="Preço R$" step="0.01">
-      <input type="file" id="editarImagem" accept="image/*">
-
-      <button class="btn-confirmar-venda" onclick="salvarEdicaoProduto()">
-        Salvar alterações
-      </button>
-    </div>
+    <button class="btn-imprimir" onclick="imprimirComprovante()">
+      🖨️ Imprimir Comprovante
+    </button>
   </div>
+</div>
 
-  <div id="modalEditarFuncionario" class="modal">
-    <div class="modal-conteudo">
-      <button class="fechar-modal" onclick="fecharModalEditarFuncionario()">×</button>
+<div id="modalEditar" class="modal">
+  <div class="modal-conteudo">
+    <button class="fechar-modal" onclick="fecharModalEditar()">×</button>
 
-      <h2>Editar funcionário</h2>
+    <h2>Editar produto</h2>
 
-      <input type="text" id="editarFuncNome" placeholder="Nome">
-      <input type="text" id="editarFuncSobrenome" placeholder="Sobrenome">
-      <input type="password" id="editarFuncSenha" placeholder="Nova senha">
+    <input type="text" id="editarNome" placeholder="Nome do produto">
+    <input type="text" id="editarCor" placeholder="Cor">
 
-      <button class="btn-confirmar-venda" onclick="salvarEdicaoFuncionario()">
-        Salvar funcionário
-      </button>
-    </div>
+    <select id="editarCategoria">
+      <option value="">Categoria</option>
+      <option value="Vestido">Vestido</option>
+      <option value="Blusa">Blusa</option>
+      <option value="Calça">Calça</option>
+      <option value="Conjunto">Conjunto</option>
+      <option value="Saia">Saia</option>
+      <option value="Short">Short</option>
+      <option value="Outro">Outro</option>
+    </select>
+
+    <input type="number" id="editarQuantidade" placeholder="Quantidade">
+    <input type="number" id="editarPreco" placeholder="Preço R$" step="0.01">
+    <input type="file" id="editarImagem" accept="image/*">
+
+    <button class="btn-confirmar-venda" onclick="salvarEdicaoProduto()">
+      Salvar alterações
+    </button>
   </div>
+</div>
+
+<div id="modalEditarFuncionario" class="modal">
+  <div class="modal-conteudo">
+    <button class="fechar-modal" onclick="fecharModalEditarFuncionario()">×</button>
+
+    <h2>Editar funcionário</h2>
+
+    <input type="text" id="editarFuncNome" placeholder="Nome">
+    <input type="text" id="editarFuncSobrenome" placeholder="Sobrenome">
+    <input type="password" id="editarFuncSenha" placeholder="Nova senha">
+
+    <button class="btn-confirmar-venda" onclick="salvarEdicaoFuncionario()">
+      Salvar funcionário
+    </button>
+  </div>
+</div>
 
   <script src="script.js"></script>
   <div id="toastSucesso" class="toast-sucesso">
