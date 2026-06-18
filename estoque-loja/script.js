@@ -1,7 +1,38 @@
 let ultimaVenda = null;
-let produtos = JSON.parse(localStorage.getItem("produtos")) || [];
-let vendas = JSON.parse(localStorage.getItem("vendas")) || [];
-let funcionarios = JSON.parse(localStorage.getItem("funcionarios")) || [];
+let produtos = [];
+let vendas = [];
+let funcionarios = [];
+
+const dadosRef = db.collection("sistema").doc("dados");
+
+dadosRef.onSnapshot((doc) => {
+  if (doc.exists) {
+    const dados = doc.data();
+
+    produtos = dados.produtos || [];
+    vendas = dados.vendas || [];
+    funcionarios = dados.funcionarios || [];
+  } else {
+    produtos = JSON.parse(localStorage.getItem("produtos")) || [];
+    vendas = JSON.parse(localStorage.getItem("vendas")) || [];
+    funcionarios = JSON.parse(localStorage.getItem("funcionarios")) || [];
+
+    if (funcionarios.length === 0) {
+      funcionarios.push({
+        nome: "admin",
+        sobrenome: "Sistema",
+        senha: "1234",
+        tipo: "admin"
+      });
+    }
+
+    salvarTudo();
+  }
+
+  garantirIdsProdutos();
+  verificarLogin();
+  atualizarLista();
+});
 let usuarioLogado = JSON.parse(localStorage.getItem("usuarioLogado")) || null;
 
 let produtoSelecionado = null;
@@ -364,18 +395,25 @@ function excluirProduto(index) {
   atualizarLista();
 }
 
+function salvarTudo() {
+  dadosRef.set({
+    produtos,
+    vendas,
+    funcionarios
+  });
+}
+
 function salvarProdutos() {
-  localStorage.setItem("produtos", JSON.stringify(produtos));
+  salvarTudo();
 }
 
 function salvarVendas() {
-  localStorage.setItem("vendas", JSON.stringify(vendas));
+  salvarTudo();
 }
 
 function salvarFuncionarios() {
-  localStorage.setItem("funcionarios", JSON.stringify(funcionarios));
+  salvarTudo();
 }
-
 function limparCampos() {
   document.getElementById("nomeProduto").value = "";
   document.getElementById("corProduto").value = "";
@@ -787,6 +825,10 @@ function carregarFuncionarios() {
 }
 
 function abrirEditarFuncionario(index) {
+    
+    document.getElementById("modalVenda").style.display = "none";
+    produtoSelecionado = null;
+
   funcionarioEditando = index;
   const func = funcionarios[index];
 
@@ -1129,4 +1171,40 @@ function mostrarToastSucesso() {
   setTimeout(() => {
     toast.classList.remove("mostrar");
   }, 3000);
+}
+function salvarEdicaoProduto() {
+  if (produtoEditando === null) {
+    alert("Nenhum produto selecionado.");
+    return;
+  }
+
+  const produto = produtos[produtoEditando];
+
+  produto.nome = document.getElementById("editarNome").value.trim();
+  produto.cor = document.getElementById("editarCor").value.trim();
+  produto.categoria = document.getElementById("editarCategoria").value;
+  produto.quantidade = Number(document.getElementById("editarQuantidade").value);
+  produto.preco = Number(document.getElementById("editarPreco").value);
+
+  const novaImagem = document.getElementById("editarImagem").files[0];
+
+  if (novaImagem) {
+    const leitor = new FileReader();
+
+    leitor.onload = function (evento) {
+      produto.imagem = evento.target.result;
+      salvarProdutos();
+      atualizarLista();
+      fecharModalEditar();
+      mostrarToastSucesso();
+    };
+
+    leitor.readAsDataURL(novaImagem);
+    return;
+  }
+
+  salvarProdutos();
+  atualizarLista();
+  fecharModalEditar();
+  mostrarToastSucesso();
 }
